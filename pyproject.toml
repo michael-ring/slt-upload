@@ -1,0 +1,55 @@
+[project]
+name = "sltupload"
+version = "0.1.0"
+description = "Discord-gated S3 member image uploader"
+readme = "README.md"
+authors = [
+    { name = "Sascha Ohms", email = "sasch9r@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "boto3>=1.40,<2",
+    "fastapi>=0.116,<1",
+    "httpx>=0.28,<1",
+    "itsdangerous>=2.2,<3",
+    "jinja2>=3.1,<4",
+    "pydantic-settings>=2.10,<3",
+    "python-multipart>=0.0.20,<1",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[project.scripts]
+sltupload = "sltupload:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<9",
+    "ruff>=0.12,<1",
+    "ty>=0.0.1,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.format]
+preview = true
+
+[tool.ruff.lint]
+preview = true
+select = ["E", "W", "F", "I", "B", "C4", "UP", "E401", "ISC001", "ISC002", "ERA", "FAST", "YTT", "ANN", "S", "EM102"]
+ignore = ["W191", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001", "Q002", "Q003", "COM812", "COM819", "UP045"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.per-file-ignores]
+"src/test/test_*.py" = ["S101", "S108", "S105", "S106"]
+"tests/test_*.py" = ["S101", "S108", "S105", "S106"]

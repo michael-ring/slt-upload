@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Upload · SLT Upload{% endblock %}
+
+{% block content %}
+  <div class="centered-page">
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">SLT Upload</p>
+        <h1>Upload a member image</h1>
+      </div>
+      <form method="post" action="/auth/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="button quiet-button" type="submit">Sign out</button>
+      </form>
+    </header>
+
+    <section class="card upload-card">
+      <div class="identity-row">
+        <span class="label">Upload username</span>
+        <code>{{ user.upload_username }}</code>
+      </div>
+
+      {% if message %}
+        <p class="notice {{ message.kind }}" role="status">{{ message.text }}</p>
+      {% endif %}
+
+      {% if catalog_error %}
+        <p class="notice error" role="alert">{{ catalog_error }}</p>
+      {% endif %}
+
+      <form class="upload-form" method="post" action="/upload" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <label for="project-input">Project</label>
+        <div class="search-field">
+          <input
+            id="project-input"
+            name="project_selection"
+            type="search"
+            value="{{ selected_project_selection }}"
+            list="project-options"
+            placeholder="Search telescope / project"
+            autocomplete="off"
+            aria-autocomplete="list"
+            required
+            {% if not project_options %}disabled{% endif %}
+            hx-get="/partials/project-options"
+            hx-trigger="focus, input changed delay:250ms"
+            hx-target="#project-options"
+            hx-swap="innerHTML"
+          >
+        </div>
+        <datalist id="project-options">
+          {% include "partials/project_options.html" %}
+        </datalist>
+
+        <label for="image-input">Image</label>
+        <input
+          id="image-input"
+          name="image"
+          type="file"
+          accept=".jpg"
+          required
+          {% if not project_options %}disabled{% endif %}
+        >
+        <p class="muted">JPG only. Maximum file size: {{ max_upload_size_mb }} MB.</p>
+
+        <button class="button primary-button" type="submit" {% if not project_options %}disabled{% endif %}>Upload image</button>
+      </form>
+    </section>
+  </div>
+{% endblock %}
