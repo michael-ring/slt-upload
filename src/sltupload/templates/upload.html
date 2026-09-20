@@ -21,10 +21,6 @@
         <code>{{ user.upload_username }}</code>
       </div>
 
-      {% if message %}
-        <p class="notice {{ message.kind }}" role="status">{{ message.text }}</p>
-      {% endif %}
-
       {% if catalog_error %}
         <p class="notice error" role="alert">{{ catalog_error }}</p>
       {% endif %}
@@ -68,6 +64,10 @@
         <p class="muted">JPG only. Maximum file size: {{ max_upload_size_mb }} MB.</p>
 
         <button class="button primary-button" type="submit" {% if not project_options %}disabled{% endif %}>Upload image</button>
+
+        {% if message %}
+          <p class="notice {{ message.kind }}" role="status">{{ message.text }}</p>
+        {% endif %}
       </form>
     </section>
   </div>

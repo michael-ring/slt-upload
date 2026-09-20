@@ -67,4 +67,5 @@ The repository has focused coverage in `tests/test_core.py` for:
 - Respect the app's security conventions: sanitize user-controlled values before rendering or path use.
 - After a successful upload, the project search field should be cleared in the rendered upload page so the UI returns to a clean state.
 - The upload form places the image input before the project search field, and that ordering should be preserved unless a UI requirement changes it intentionally.
+- Status messages are shown below the upload button in the upload form.
 - The upload page currently renders `selected_project_selection` back into the input value; keep that behavior in mind when changing success or error states.
