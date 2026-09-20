@@ -3,14 +3,19 @@ import time
 from io import BytesIO
 from pathlib import Path
 
+import httpx
 import pytest
+from PIL import Image
 
 from sltupload.app import TEMPLATES
+from sltupload.app import create_app
 from sltupload.app import project_option_list
 from sltupload.app import resolve_project_selection
 from sltupload.auth import DiscordOAuth
 from sltupload.config import Settings
 from sltupload.filesystem import ImageUploader
+from sltupload.filesystem import UploadError
+from sltupload.filesystem import is_valid_jpeg
 from sltupload.filesystem import sanitize_username
 from sltupload.filesystem import upload_key
 from sltupload.s3 import ProjectCatalog
@@ -81,9 +86,40 @@ def test_upload_project_typeahead_uses_rendered_html_suggestions_without_request
     assert "project_typeahead.js" in rendered
 
 
+def test_anonymous_upload_is_rejected_before_multipart_parsing() -> None:
+    application = create_app(settings=Settings(session_secret="test-session-secret"))
+
+    async def send_request() -> httpx.Response:
+        transport = httpx.ASGITransport(app=application)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            follow_redirects=False,
+        ) as client:
+            return await client.post(
+                url="/upload",
+                content=b"not a multipart body",
+                headers={"Content-Type": "multipart/form-data; boundary=missing"},
+            )
+
+    response = asyncio.run(main=send_request())
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
 def test_upload_key_rejects_unsafe_source_folder_names() -> None:
     with pytest.raises(expected_exception=ValueError):
         upload_key(username="astro-member", telescope="slt/../", project="M 17")
+
+
+def test_is_valid_jpeg_accepts_decodable_jpeg_and_rejects_other_bytes() -> None:
+    image_file = BytesIO()
+    with Image.new(mode="RGB", size=(1, 1), color="red") as image:
+        image.save(fp=image_file, format="JPEG")
+
+    assert is_valid_jpeg(fileobj=image_file)
+    assert not is_valid_jpeg(fileobj=BytesIO(initial_bytes=b"not a jpeg"))
 
 
 def test_settings_split_comma_separated_guild_ids() -> None:
@@ -175,3 +211,32 @@ def test_image_uploader_writes_file_to_configured_path_and_updates_timestamp(tmp
     destination = tmp_path / key
     assert destination.read_bytes() == b"image bytes"
     assert before <= destination.stat().st_mtime <= time.time()
+
+
+def test_image_uploader_keeps_existing_file_when_copy_fails(tmp_path: Path) -> None:
+    settings = Settings(upload_path=tmp_path)
+    uploader = ImageUploader(settings=settings)
+    key = "user/Telescope/Project.jpg"
+    destination = tmp_path / key
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(b"original image")
+
+    class FailingFile(BytesIO):
+        read_count: int = 0
+
+        def read(self, size: int | None = -1, /) -> bytes:
+            self.read_count += 1
+            if self.read_count > 1:
+                raise OSError("read failed")
+            return super().read(size)
+
+    with pytest.raises(expected_exception=UploadError):
+        asyncio.run(
+            main=uploader.upload(
+                fileobj=FailingFile(initial_bytes=b"partial image"),
+                key=key,
+            )
+        )
+
+    assert destination.read_bytes() == b"original image"
+    assert not tuple(destination.parent.glob(pattern=f".{destination.name}.*.tmp"))

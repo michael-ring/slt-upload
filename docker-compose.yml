@@ -5,6 +5,13 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      UPLOAD_PATH: /app/uploads
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
     restart: unless-stopped
+    volumes:
+      - sltupload-uploads:/app/uploads
+
+volumes:
+  sltupload-uploads:

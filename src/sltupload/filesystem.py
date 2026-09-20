@@ -1,11 +1,14 @@
 import os
 import re
 import shutil
+import tempfile
 import time
 import unicodedata
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import BinaryIO
+
+from PIL import Image
 
 from sltupload.config import Settings
 from sltupload.s3 import sanitize_catalog_name
@@ -33,6 +36,24 @@ def upload_key(username: str, telescope: str, project: str) -> str:
     return f"{sanitize_username(username=username)}/{safe_telescope}/{safe_project}.jpg"
 
 
+def is_valid_jpeg(fileobj: BinaryIO) -> bool:
+    """Return whether a file contains a decodable JPEG image."""
+    try:
+        fileobj.seek(0)
+        with Image.open(fp=fileobj) as image:
+            if image.format != "JPEG":
+                return False
+            image.verify()
+    except (OSError, SyntaxError, ValueError):
+        return False
+
+    try:
+        fileobj.seek(0)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
 class ImageUploader:
     """Write image bytes below the configured filesystem path."""
 
@@ -42,14 +63,32 @@ class ImageUploader:
     async def upload(self, fileobj: BinaryIO, key: str) -> None:
         """Write a file without changing its bytes, replacing an existing path."""
         destination = self._destination(key=key)
+        temporary_path: Path | None = None
         try:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            with destination.open(mode="wb") as output:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=destination.parent,
+                prefix=f".{destination.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as output:
+                temporary_path = Path(output.name)
                 shutil.copyfileobj(fsrc=fileobj, fdst=output)
+                output.flush()
+                os.fsync(output.fileno())
             now = time.time()
-            os.utime(path=destination, times=(now, now))
+            os.utime(path=temporary_path, times=(now, now))
+            os.replace(src=temporary_path, dst=destination)
+            temporary_path = None
         except OSError as exc:
             raise UploadError("Could not save the image to the configured upload path.") from exc
+        finally:
+            if temporary_path is not None:
+                try:
+                    temporary_path.unlink()
+                except OSError:
+                    pass
 
     def _destination(self, key: str) -> Path:
         relative_path = PurePosixPath(key)

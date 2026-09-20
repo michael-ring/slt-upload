@@ -6,16 +6,15 @@ from typing import Annotated
 from typing import cast
 
 from fastapi import FastAPI
-from fastapi import File
 from fastapi import Form
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
-from fastapi import UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import UploadFile
 from starlette.middleware.sessions import SessionMiddleware
 
 from sltupload.auth import DiscordAuthError
@@ -24,6 +23,7 @@ from sltupload.config import Settings
 from sltupload.config import get_settings
 from sltupload.filesystem import ImageUploader
 from sltupload.filesystem import UploadError
+from sltupload.filesystem import is_valid_jpeg
 from sltupload.filesystem import sanitize_username
 from sltupload.filesystem import upload_key
 from sltupload.s3 import MAX_CATALOG_COMPONENT_LENGTH
@@ -208,55 +208,66 @@ def _register_routes(application: FastAPI) -> FastAPI:
         }
 
     @application.post(path="/upload", response_class=HTMLResponse, response_model=None)
-    async def upload(
-        request: Request,
-        project_selection: Annotated[str, Form()],
-        image: Annotated[UploadFile, File()],
-        csrf_token: Annotated[str, Form()],
-    ) -> HTMLResponse | RedirectResponse:
+    async def upload(request: Request) -> HTMLResponse | RedirectResponse:
         user = current_user(request=request)
         if user is None:
             return RedirectResponse(url="/login", status_code=303)
-        if not valid_csrf_token(request=request, supplied_token=csrf_token):
-            raise HTTPException(status_code=403, detail="Invalid form token.")
 
-        message: dict[str, str] | None = None
-        if not image.filename:
-            message = {"kind": "error", "text": "Choose an image file to upload."}
-        elif not image.filename.lower().endswith(".jpg"):
-            message = {"kind": "error", "text": "The selected file must be a .jpg image."}
-        elif image.content_type != "image/jpeg":
-            message = {"kind": "error", "text": "The selected file must be a .jpg image."}
-        elif image.size is not None and image.size > request.app.state.settings.max_upload_size_bytes:
-            message = {"kind": "error", "text": "The selected image is too large."}
-        else:
-            try:
-                catalog: ProjectCatalog = request.app.state.catalog
-                catalog_data = sanitize_catalog(catalog=await catalog.get_catalog(force_refresh=True))
-                selection = resolve_project_selection(selection=project_selection, catalog=catalog_data)
-                if selection is None:
-                    message = {"kind": "error", "text": "Choose a project from the available list."}
-                else:
-                    telescope, project = selection
-                    key = upload_key(username=user["upload_username"], telescope=telescope, project=project)
-                    uploader: ImageUploader = request.app.state.uploader
-                    await uploader.upload(
-                        fileobj=image.file,
-                        key=key,
-                    )
-                    message = {"kind": "success", "text": f"Uploaded to {key}"}
-                    project_selection = ""
-            except ProjectCatalogError as exc:
-                message = {"kind": "error", "text": str(exc)}
-            except UploadError as exc:
-                message = {"kind": "error", "text": str(exc)}
+        form = await request.form(max_files=1, max_fields=2, max_part_size=64 * 1024)
+        project_selection = form.get("project_selection")
+        image = form.get("image")
+        csrf_token = form.get("csrf_token")
+        try:
+            if (
+                not isinstance(project_selection, str)
+                or not isinstance(image, UploadFile)
+                or not isinstance(csrf_token, str)
+            ):
+                raise HTTPException(status_code=422, detail="Invalid upload form.")
+            if not valid_csrf_token(request=request, supplied_token=csrf_token):
+                raise HTTPException(status_code=403, detail="Invalid form token.")
 
-        return await render_upload_page(
-            request=request,
-            user=user,
-            message=message,
-            selected_project_selection=project_selection,
-        )
+            message: dict[str, str] | None = None
+            if not image.filename:
+                message = {"kind": "error", "text": "Choose an image file to upload."}
+            elif not image.filename.lower().endswith(".jpg"):
+                message = {"kind": "error", "text": "The selected file must be a .jpg image."}
+            elif image.content_type != "image/jpeg":
+                message = {"kind": "error", "text": "The selected file must be a .jpg image."}
+            elif image.size is not None and image.size > request.app.state.settings.max_upload_size_bytes:
+                message = {"kind": "error", "text": "The selected image is too large."}
+            elif not is_valid_jpeg(fileobj=image.file):
+                message = {"kind": "error", "text": "The selected file must be a valid .jpg image."}
+            else:
+                try:
+                    catalog: ProjectCatalog = request.app.state.catalog
+                    catalog_data = sanitize_catalog(catalog=await catalog.get_catalog())
+                    selection = resolve_project_selection(selection=project_selection, catalog=catalog_data)
+                    if selection is None:
+                        message = {"kind": "error", "text": "Choose a project from the available list."}
+                    else:
+                        telescope, project = selection
+                        key = upload_key(username=user["upload_username"], telescope=telescope, project=project)
+                        uploader: ImageUploader = request.app.state.uploader
+                        await uploader.upload(
+                            fileobj=image.file,
+                            key=key,
+                        )
+                        message = {"kind": "success", "text": f"Uploaded to {key}"}
+                        project_selection = ""
+                except ProjectCatalogError as exc:
+                    message = {"kind": "error", "text": str(exc)}
+                except UploadError as exc:
+                    message = {"kind": "error", "text": str(exc)}
+
+            return await render_upload_page(
+                request=request,
+                user=user,
+                message=message,
+                selected_project_selection=project_selection,
+            )
+        finally:
+            await form.close()
 
     return application
 
