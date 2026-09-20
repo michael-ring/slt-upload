@@ -7,13 +7,13 @@ def main() -> None:
     import uvicorn
 
     settings = get_settings()
-    if settings.ssl_certfile is not None and settings.ssl_keyfile is not None and Path(settings.ssl_keyfile).exists() and Path(settings.ssl_certfile).exists():
+    if settings.site_ssl_cert is not None and settings.site_ssl_key is not None and Path(settings.site_ssl_key).exists() and Path(settings.site_ssl_cert).exists():
         uvicorn.run(
             app="sltupload.app:app",
             host=settings.host,
             port=settings.port,
-            ssl_keyfile=settings.ssl_keyfile,
-            ssl_certfile=settings.ssl_certfile,
+            ssl_keyfile=settings.site_ssl_key,
+            ssl_certfile=settings.site_ssl_cert,
         )
     else:
       uvicorn.run(app="sltupload.app:app", host=settings.host, port=settings.port)

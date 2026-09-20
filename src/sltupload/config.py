@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     max_upload_size_bytes: int = 25 * 1024 * 1024
     host: str = "127.0.0.1"
     port: int = 8000
-    ssl_keyfile: str | None = None
-    ssl_certfile: str | None = None
+    site_ssl_key: str | None = None
+    site_ssl_cert: str | None = None
 
     @property
     def allowed_guild_ids(self) -> tuple[str, ...]:
