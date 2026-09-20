@@ -64,6 +64,7 @@ The repository has focused coverage in `tests/test_core.py` for:
 - Keep comments short and only add them where the code intent is not obvious.
 - Prefer small, targeted changes that match the existing FastAPI and S3 abstractions.
 - Validate with the smallest relevant toolchain: `ruff`, `ty`, and/or `pytest` as applicable to the change.
+- Always run `python -m ruff check .` after relevant changes, and do not leave lint issues behind.
 - Respect the app's security conventions: sanitize user-controlled values before rendering or path use.
 - After a successful upload, the project search field should be cleared in the rendered upload page so the UI returns to a clean state.
 - The upload form places the image input before the project search field, and that ordering should be preserved unless a UI requirement changes it intentionally.

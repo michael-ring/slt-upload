@@ -1,5 +1,6 @@
-from sltupload.config import get_settings
 from pathlib import Path
+
+from sltupload.config import get_settings
 
 
 def main() -> None:
@@ -7,13 +8,16 @@ def main() -> None:
     import uvicorn
 
     settings = get_settings()
-    if settings.site_ssl_cert is not None and settings.site_ssl_key is not None and Path(settings.site_ssl_key).exists() and Path(settings.site_ssl_cert).exists():
+    ssl_key = settings.site_ssl_key
+    ssl_cert = settings.site_ssl_cert
+    if ssl_key is not None and ssl_cert is not None and Path(ssl_key).exists() and Path(ssl_cert).exists():
         uvicorn.run(
             app="sltupload.app:app",
             host=settings.host,
             port=settings.port,
-            ssl_keyfile=settings.site_ssl_key,
-            ssl_certfile=settings.site_ssl_cert,
+            ssl_keyfile=ssl_key,
+            ssl_certfile=ssl_cert,
         )
-    else:
-      uvicorn.run(app="sltupload.app:app", host=settings.host, port=settings.port)
+        return
+
+    uvicorn.run(app="sltupload.app:app", host=settings.host, port=settings.port)
