@@ -32,6 +32,16 @@
       <form class="upload-form" method="post" action="/upload" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
+        <label for="image-input">Image</label>
+        <input
+          id="image-input"
+          name="image"
+          type="file"
+          accept=".jpg"
+          required
+          {% if not project_options %}disabled{% endif %}
+        >
+
         <label for="project-input">Project</label>
         <div class="search-field">
           <input
@@ -55,15 +65,6 @@
           {% include "partials/project_options.html" %}
         </datalist>
 
-        <label for="image-input">Image</label>
-        <input
-          id="image-input"
-          name="image"
-          type="file"
-          accept=".jpg"
-          required
-          {% if not project_options %}disabled{% endif %}
-        >
         <p class="muted">JPG only. Maximum file size: {{ max_upload_size_mb }} MB.</p>
 
         <button class="button primary-button" type="submit" {% if not project_options %}disabled{% endif %}>Upload image</button>
