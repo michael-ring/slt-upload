@@ -1,7 +1,7 @@
 [project]
 name = "sltupload"
 version = "0.1.0"
-description = "Discord-gated S3 member image uploader"
+description = "Discord-gated member image uploader"
 readme = "README.md"
 authors = [
     { name = "Sascha Ohms", email = "sasch9r@gmail.com" }

@@ -1,6 +1,7 @@
 import asyncio
+import time
 from io import BytesIO
-from typing import BinaryIO
+from pathlib import Path
 
 import pytest
 
@@ -9,12 +10,12 @@ from sltupload.app import project_option_list
 from sltupload.app import resolve_project_selection
 from sltupload.auth import DiscordOAuth
 from sltupload.config import Settings
-from sltupload.s3 import ImageUploader
+from sltupload.filesystem import ImageUploader
+from sltupload.filesystem import sanitize_username
+from sltupload.filesystem import upload_key
 from sltupload.s3 import ProjectCatalog
 from sltupload.s3 import sanitize_catalog
 from sltupload.s3 import sanitize_catalog_name
-from sltupload.s3 import sanitize_username
-from sltupload.s3 import upload_key
 
 
 def test_sanitize_username_removes_path_separators_and_unsafe_characters() -> None:
@@ -27,7 +28,7 @@ def test_sanitize_username_has_fallback_for_empty_safe_value() -> None:
 
 def test_upload_key_preserves_telescope_and_project_spaces() -> None:
     assert upload_key(username="astro-member", telescope="My Telescope", project="Project 1") == (
-        "memberpics/astro-member/My Telescope/Project 1.jpg"
+        "astro-member/My Telescope/Project 1.jpg"
     )
 
 
@@ -158,34 +159,19 @@ def test_project_catalog_reads_nested_prefixes_and_caches_them() -> None:
     assert client_calls == 1
 
 
-def test_image_uploader_passes_file_bytes_and_destination_to_s3() -> None:
-    settings = Settings(upload_s3_bucket="destination")
-    uploaded: list[tuple[str, str, bytes, dict[str, str]]] = []
+def test_image_uploader_writes_file_to_configured_path_and_updates_timestamp(tmp_path: Path) -> None:
+    settings = Settings(upload_path=tmp_path)
+    uploader = ImageUploader(settings=settings)
+    key = "user/Telescope/Project.jpg"
+    before = time.time()
 
-    class FakeClient:
-        def upload_fileobj(
-            self,
-            Fileobj: BinaryIO,
-            Bucket: str,
-            Key: str,
-            ExtraArgs: dict[str, str],
-        ) -> None:
-            uploaded.append((Bucket, Key, Fileobj.read(), ExtraArgs))
-
-    uploader = ImageUploader(settings=settings, client_factory=FakeClient)
     asyncio.run(
         main=uploader.upload(
             fileobj=BytesIO(initial_bytes=b"image bytes"),
-            key="memberpics/user/Telescope/Project.jpg",
-            content_type="image/jpeg",
+            key=key,
         )
     )
 
-    assert uploaded == [
-        (
-            "destination",
-            "memberpics/user/Telescope/Project.jpg",
-            b"image bytes",
-            {"ContentType": "image/jpeg"},
-        )
-    ]
+    destination = tmp_path / key
+    assert destination.read_bytes() == b"image bytes"
+    assert before <= destination.stat().st_mtime <= time.time()

@@ -25,6 +25,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
+RUN mkdir /app/uploads && chown 65532:65532 /app/uploads
 
 EXPOSE 8000
 USER 65532:65532

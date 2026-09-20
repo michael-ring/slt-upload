@@ -22,14 +22,14 @@ from sltupload.auth import DiscordAuthError
 from sltupload.auth import DiscordOAuth
 from sltupload.config import Settings
 from sltupload.config import get_settings
+from sltupload.filesystem import ImageUploader
+from sltupload.filesystem import UploadError
+from sltupload.filesystem import sanitize_username
+from sltupload.filesystem import upload_key
 from sltupload.s3 import MAX_CATALOG_COMPONENT_LENGTH
-from sltupload.s3 import ImageUploader
 from sltupload.s3 import ProjectCatalog
 from sltupload.s3 import ProjectCatalogError
-from sltupload.s3 import UploadError
 from sltupload.s3 import sanitize_catalog
-from sltupload.s3 import sanitize_username
-from sltupload.s3 import upload_key
 
 BASE_DIR = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -243,7 +243,6 @@ def _register_routes(application: FastAPI) -> FastAPI:
                     await uploader.upload(
                         fileobj=image.file,
                         key=key,
-                        content_type=image.content_type or "application/octet-stream",
                     )
                     message = {"kind": "success", "text": f"Uploaded to {key}"}
                     project_selection = ""

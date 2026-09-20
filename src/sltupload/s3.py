@@ -1,10 +1,8 @@
 import asyncio
-import re
 import unicodedata
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
-from typing import BinaryIO
 from typing import Protocol
 
 import boto3
@@ -16,10 +14,6 @@ from sltupload.config import Settings
 
 class ProjectCatalogError(Exception):
     """Raised when project folders cannot be loaded from S3."""
-
-
-class UploadError(Exception):
-    """Raised when an image cannot be uploaded to S3."""
 
 
 class S3Paginator(Protocol):
@@ -36,21 +30,7 @@ class S3CatalogClient(Protocol):
         """Return a paginator for an S3 operation."""
 
 
-class S3UploadClient(Protocol):
-    """The S3 client surface used to upload member images."""
-
-    def upload_fileobj(
-        self,
-        Fileobj: BinaryIO,
-        Bucket: str,
-        Key: str,
-        ExtraArgs: dict[str, str],
-    ) -> None:
-        """Upload a file-like object to a bucket."""
-
-
 CatalogClientFactory = Callable[[], S3CatalogClient]
-UploadClientFactory = Callable[[], S3UploadClient]
 MAX_CATALOG_COMPONENT_LENGTH = 255
 
 
@@ -89,24 +69,6 @@ def sanitize_catalog(catalog: Mapping[str, object]) -> dict[str, tuple[str, ...]
             existing.extend(project for project in projects if project not in existing)
             sanitized[telescope] = tuple(existing)
     return sanitized
-
-
-def sanitize_username(username: str) -> str:
-    """Turn a Discord username into one safe S3 path component."""
-    normalized = unicodedata.normalize("NFKC", username).strip()
-    normalized = normalized.replace("/", "-").replace("\\", "-")
-    sanitized = re.sub(pattern=r"[^A-Za-z0-9._-]+", repl="-", string=normalized)
-    sanitized = re.sub(pattern=r"-{2,}", repl="-", string=sanitized).strip("._-")
-    return sanitized[:64] or "discord-user"
-
-
-def upload_key(username: str, telescope: str, project: str) -> str:
-    """Build the exact destination key used for member images."""
-    safe_telescope = sanitize_catalog_name(value=telescope)
-    safe_project = sanitize_catalog_name(value=project)
-    if safe_telescope is None or safe_project is None:
-        raise ValueError("Telescope and project names must be safe source folder names.")
-    return f"memberpics/{sanitize_username(username=username)}/{safe_telescope}/{safe_project}.jpg"
 
 
 def _s3_client_kwargs(
@@ -231,39 +193,3 @@ class ProjectCatalog:
 
     def _copy_catalog(self) -> dict[str, tuple[str, ...]]:
         return sanitize_catalog(catalog=self._catalog)
-
-
-class ImageUploader:
-    """Upload image bytes to the independently configured destination bucket."""
-
-    def __init__(self, settings: Settings, client_factory: UploadClientFactory | None = None) -> None:
-        self.settings = settings
-        self._client_factory = client_factory or self._create_client
-
-    async def upload(self, fileobj: BinaryIO, key: str, content_type: str) -> None:
-        """Upload a file without changing its bytes, replacing an existing key."""
-        try:
-            self._upload(fileobj=fileobj, key=key, content_type=content_type)
-        except (BotoCoreError, ClientError) as exc:
-            raise UploadError("Could not upload the image to the destination bucket.") from exc
-
-    def _create_client(self) -> S3UploadClient:
-        kwargs = _s3_client_kwargs(
-            endpoint_url=self.settings.upload_s3_endpoint_url,
-            region_name=self.settings.upload_s3_region,
-            access_key_id=self.settings.upload_s3_access_key_id,
-            secret_access_key=self.settings.upload_s3_secret_access_key,
-        )
-        return boto3.client(service_name="s3", **kwargs)
-
-    def _upload(self, fileobj: BinaryIO, key: str, content_type: str) -> None:
-        missing = self.settings.missing_upload_s3_settings()
-        if missing:
-            raise UploadError("Upload S3 is not configured.")
-        client = self._client_factory()
-        client.upload_fileobj(
-            Fileobj=fileobj,
-            Bucket=self.settings.upload_s3_bucket,
-            Key=key,
-            ExtraArgs={"ContentType": content_type},
-        )

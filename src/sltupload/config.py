@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
@@ -31,11 +32,7 @@ class Settings(BaseSettings):
     source_s3_access_key_id: str | None = None
     source_s3_secret_access_key: str | None = None
 
-    upload_s3_bucket: str = ""
-    upload_s3_endpoint_url: str | None = None
-    upload_s3_region: str | None = None
-    upload_s3_access_key_id: str | None = None
-    upload_s3_secret_access_key: str | None = None
+    upload_path: Path = Path("uploads")
 
     project_cache_ttl_seconds: int = 15 * 60
     max_upload_size_bytes: int = 25 * 1024 * 1024
@@ -67,13 +64,6 @@ class Settings(BaseSettings):
         missing: list[str] = []
         if not self.source_s3_bucket:
             missing.append("SOURCE_S3_BUCKET")
-        return tuple(missing)
-
-    def missing_upload_s3_settings(self) -> tuple[str, ...]:
-        """Return the upload S3 settings required for uploads."""
-        missing: list[str] = []
-        if not self.upload_s3_bucket:
-            missing.append("UPLOAD_S3_BUCKET")
         return tuple(missing)
 
 

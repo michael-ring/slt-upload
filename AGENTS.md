@@ -2,7 +2,7 @@
 
 ## Project overview
 
-This repository contains `sltupload`, a FastAPI service for members of the SLT Observatory to upload finished image edits to a configured S3 bucket. The app authenticates with Discord OAuth, restricts access to specific allowed guilds, caches a project catalog from a source S3 bucket, and uploads approved images to a destination bucket using a member-specific key.
+This repository contains `sltupload`, a FastAPI service for members of the SLT Observatory to upload finished image edits to a configured filesystem path. The app authenticates with Discord OAuth, restricts access to specific allowed guilds, caches a project catalog from a source S3 bucket, and stores approved images using a member-specific path.
 
 ## Instructions
 

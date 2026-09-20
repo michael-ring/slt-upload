@@ -25,11 +25,11 @@ Alternatively run this service via Docker:
 docker compose up --build
 ```
 
-Uploads create or replace an existing object at the following path in
-the configured S3 bucket:
+Set `UPLOAD_PATH` to the filesystem directory where uploaded images should be stored.
+Uploads create or replace a file below that directory at the following relative path:
 
 ```text
-memberpics/{sanitized_username}/{telescope}/{project}.jpg
+{sanitized_username}/{telescope}/{project}.jpg
 ```
 
 ## Development
