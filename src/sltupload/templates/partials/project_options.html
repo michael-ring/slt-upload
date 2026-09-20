@@ -1,3 +1,12 @@
 {% for option in project_options %}
-  <option value="{{ option.label }}"></option>
+  <button
+    id="project-option-{{ loop.index }}"
+    class="project-suggestion"
+    type="button"
+    role="option"
+    tabindex="-1"
+    aria-selected="false"
+    data-project-option
+    data-value="{{ option.label }}"
+  >{{ option.label }}</button>
 {% endfor %}

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}?v={{ static_version }}">
-    <script src="https://unpkg.com/htmx.org@2.0.6" defer></script>
+    <script src="{{ url_for('static', path='project_typeahead.js') }}?v={{ project_typeahead_version }}" defer></script>
   </head>
   <body>
     <main class="page-shell">

@@ -34,8 +34,12 @@ from sltupload.s3 import upload_key
 BASE_DIR = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 STYLESHEET_PATH = BASE_DIR / "static" / "styles.css"
+PROJECT_TYPEAHEAD_SCRIPT_PATH = BASE_DIR / "static" / "project_typeahead.js"
 STATIC_VERSION = hashlib.sha256(data=STYLESHEET_PATH.read_bytes()).hexdigest()[:16]
-cast(dict[str, object], TEMPLATES.env.globals)["static_version"] = STATIC_VERSION
+PROJECT_TYPEAHEAD_VERSION = hashlib.sha256(data=PROJECT_TYPEAHEAD_SCRIPT_PATH.read_bytes()).hexdigest()[:16]
+TEMPLATE_GLOBALS = cast(dict[str, object], TEMPLATES.env.globals)
+TEMPLATE_GLOBALS["static_version"] = STATIC_VERSION
+TEMPLATE_GLOBALS["project_typeahead_version"] = PROJECT_TYPEAHEAD_VERSION
 ERROR_MESSAGES = {
     "configuration": "The site is not configured yet. Please contact the administrator.",
     "discord_denied": "Discord login was cancelled or denied.",
@@ -202,22 +206,6 @@ def _register_routes(application: FastAPI) -> FastAPI:
         return {
             "telescopes": [{"name": telescope, "projects": list(projects)} for telescope, projects in catalog.items()]
         }
-
-    @application.get(path="/partials/project-options", response_class=HTMLResponse)
-    async def project_options(
-        request: Request,
-        project_selection: Annotated[str, Query()] = "",
-    ) -> HTMLResponse:
-        require_user(request=request)
-        try:
-            catalog = await get_catalog(request=request)
-        except ProjectCatalogError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        return TEMPLATES.TemplateResponse(
-            request=request,
-            name="partials/project_options.html",
-            context={"project_options": project_option_list(catalog=catalog, query=project_selection)},
-        )
 
     @application.post(path="/upload", response_class=HTMLResponse, response_model=None)
     async def upload(

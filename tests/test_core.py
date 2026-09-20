@@ -53,11 +53,31 @@ def test_project_options_filter_unsafe_catalog_values() -> None:
     assert [option.label for option in options] == ["slt / M 17"]
 
 
-def test_project_options_are_html_escaped_for_the_datalist() -> None:
+def test_project_suggestions_are_html_escaped() -> None:
     options = project_option_list(catalog={"slt & scope": ("M 17 & 18",)})
     rendered = TEMPLATES.get_template(name="partials/project_options.html").render(project_options=options)
 
-    assert "slt &amp; scope / M 17 &amp; 18" in rendered
+    assert 'data-value="slt &amp; scope / M 17 &amp; 18"' in rendered
+    assert ">slt &amp; scope / M 17 &amp; 18</button>" in rendered
+
+
+def test_upload_project_typeahead_uses_rendered_html_suggestions_without_requests() -> None:
+    rendered = TEMPLATES.get_template(name="upload.html").render(
+        user={"upload_username": "astro-member"},
+        csrf_token="token",
+        catalog_error=None,
+        max_upload_size_mb=25,
+        message=None,
+        project_options=project_option_list(catalog={"slt": ("M 17",)}),
+        selected_project_selection="",
+        url_for=lambda endpoint, **kwargs: f"/{kwargs.get('path', endpoint)}",
+    )
+
+    assert 'id="project-input"' in rendered
+    assert 'id="project-suggestions"' in rendered
+    assert 'data-value="slt / M 17"' in rendered
+    assert "<datalist" not in rendered
+    assert "project_typeahead.js" in rendered
 
 
 def test_upload_key_rejects_unsafe_source_folder_names() -> None:

@@ -39,27 +39,26 @@
         >
 
         <label for="project-input">Project</label>
-        <div class="search-field">
+        <div class="search-field typeahead" data-project-typeahead>
           <input
             id="project-input"
             name="project_selection"
             type="search"
             value="{{ selected_project_selection }}"
-            list="project-options"
             placeholder="Search telescope / project"
             autocomplete="off"
             aria-autocomplete="list"
+            aria-controls="project-suggestions"
+            aria-expanded="false"
+            aria-haspopup="listbox"
+            role="combobox"
             required
             {% if not project_options %}disabled{% endif %}
-            hx-get="/partials/project-options"
-            hx-trigger="focus, input changed delay:250ms"
-            hx-target="#project-options"
-            hx-swap="innerHTML"
           >
+          <div id="project-suggestions" class="project-suggestions" role="listbox" hidden>
+            {% include "partials/project_options.html" %}
+          </div>
         </div>
-        <datalist id="project-options">
-          {% include "partials/project_options.html" %}
-        </datalist>
 
         <p class="muted">JPG only. Maximum file size: {{ max_upload_size_mb }} MB.</p>
 
