@@ -1,17 +1,43 @@
-# Python-generated files
+# Python bytecode and build output
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
 build/
 dist/
-wheels/
-*.egg-info
+*.egg-info/
+.eggs/
+.Python
+pip-wheel-metadata/
 
 # Virtual environments
-.venv
+.venv/
+venv/
+env/
+ENV/
 
-# Local configuration and test artifacts
+# Local environment and secrets
 .env
-.env.*
-!.env.example
+
+# Tooling caches
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project runtime artifacts
+*.log

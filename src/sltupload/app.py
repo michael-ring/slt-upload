@@ -258,6 +258,7 @@ def _register_routes(application: FastAPI) -> FastAPI:
                         content_type=image.content_type or "application/octet-stream",
                     )
                     message = {"kind": "success", "text": f"Uploaded to {key}"}
+                    project_selection = ""
             except ProjectCatalogError as exc:
                 message = {"kind": "error", "text": str(exc)}
             except UploadError as exc:
